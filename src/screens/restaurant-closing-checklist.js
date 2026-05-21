@@ -26,6 +26,7 @@ import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 import ImageIcon from "@mui/icons-material/Image";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 import appTheme from "../theme";
@@ -37,6 +38,7 @@ const ANSWER_TYPES = [
   { value: "text", label: "Text Input", icon: <TextFieldsIcon fontSize="small" /> },
   { value: "image", label: "Image Upload", icon: <ImageIcon fontSize="small" /> },
   { value: "date", label: "Date Selection", icon: <CalendarTodayIcon fontSize="small" /> },
+  { value: "time", label: "Time Selection", icon: <AccessTimeIcon fontSize="small" /> },
 ];
 
 const defaultQuestion = () => ({
@@ -177,6 +179,13 @@ const RestaurantClosingChecklist = () => {
                 <Typography variant="body1" color="text.secondary">mm/dd/yyyy</Typography>
                 <Box flex={1} />
                 <CalendarTodayIcon sx={{ color: "#555", fontSize: 20 }} />
+              </Box>
+            )}
+            {q.type === "time" && (
+              <Box sx={{ p: 1.5, borderRadius: "8px", backgroundColor: "#f9f9f9", border: "1px dashed #ddd", display: "inline-flex", alignItems: "center", gap: 1.5, minWidth: 200 }}>
+                <Typography variant="body1" color="text.secondary" sx={{ letterSpacing: 2 }}>-- : --</Typography>
+                <Box flex={1} />
+                <AccessTimeIcon sx={{ color: "#555", fontSize: 20 }} />
               </Box>
             )}
           </CardContent>
