@@ -122,3 +122,96 @@ exports.sendWasteReportEmail = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', error.message);
     }
 });
+
+// ---- Send Checklist Report Email ----
+// Callable function: accepts { pdfBase64, startDate, endDate, category, formType }
+exports.sendChecklistReportEmail = functions.https.onCall(async (data, context) => {
+    try {
+        const { pdfBase64, startDate, endDate, category, formType } = data;
+
+        if (!pdfBase64) {
+            throw new functions.https.HttpsError('invalid-argument', 'PDF data is required.');
+        }
+
+        const transporter = createTransporter();
+
+        const recipients = [
+            'karthik@nk-ab.com',
+            'digitalbotsolutions@gmail.com',
+            // 'sreedarpariserla0@gmail.com'
+        ];
+
+        const dateRange = startDate && endDate
+            ? `${startDate} to ${endDate}`
+            : new Date().toISOString().split('T')[0];
+
+        const filterInfo = `Category: ${category || 'All'} | Form: ${formType || 'All'}`;
+
+        const mailOptions = {
+            from: '"Arya Bhavan - Central Kitchen" <ABFoodsuk@gmail.com>',
+            to: recipients.join(', '),
+            subject: `📋 Checklist Reports - ${dateRange}`,
+            html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+                     color: white; padding: 25px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 25px; border: 1px solid #ddd;
+                      border-radius: 0 0 10px 10px; }
+            .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;
+                     color: #666; font-size: 12px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📋 Checklist Reports</h1>
+              <p>Arya Bhavan - Central Kitchen</p>
+            </div>
+            <div class="content">
+              <h3>Checklists for: ${dateRange}</h3>
+              <p><strong>Filters Applied:</strong> ${filterInfo}</p>
+              <p>Please find the attached checklist reports PDF for the selected date range and filters.</p>
+              <div class="footer">
+                <p>This is an automated email from Arya Bhavan Central Kitchen.</p>
+                <p>© ${new Date().getFullYear()} Arya Bhavan. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+            attachments: [
+                {
+                    filename: `Checklist_Report_${dateRange.replace(/\s/g, '_')}.pdf`,
+                    content: pdfBase64,
+                    encoding: 'base64',
+                    contentType: 'application/pdf',
+                },
+            ],
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Checklist report email sent to: ${recipients.join(', ')}`);
+
+        // Log the email in Firestore
+        await admin.firestore().collection('emailLogs').add({
+            type: 'checklist_report',
+            recipients,
+            dateRange,
+            category: category || 'All',
+            formType: formType || 'All',
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'sent',
+        });
+
+        return { success: true, message: 'Checklist report email sent successfully!' };
+    } catch (error) {
+        console.error('❌ Error sending checklist report email:', error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
