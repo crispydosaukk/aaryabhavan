@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "./auth-context"; // Make sure to import A
 import Dashboard from "./screens/dashboard";
 import ManageUsers from "./screens/manage-users";
 import ConsolidatedInvoiceScreen from "./screens/ConsolidatedInvoiceScreen";
+import ConsolidatedReportsScreen from "./screens/ConsolidatedReportsScreen";
 import { createTheme, ThemeProvider, useMediaQuery } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -84,6 +85,7 @@ const AppRoutes = () => {
           <Route path="/restaurant-opening-checklist" element={<RestaurantOpeningChecklist />} />
           <Route path="/restaurant-closing-checklist" element={<RestaurantClosingChecklist />} />
           <Route path="/eho-compliance-checklist" element={<EHOComplianceChecklist />} />
+          <Route path="/consolidated-reports" element={<ConsolidatedReportsScreen />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

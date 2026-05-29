@@ -96,6 +96,7 @@ const Sidebar = ({ onCollapse }) => {
       subItems: [
         { path: "/checklist", text: "Checklist" },
         { path: "/reports", text: "Report" },
+        { path: "/consolidated-reports", text: "Consolidated Reports" },
       ],
     },
     ...(userRole === "superadmin"

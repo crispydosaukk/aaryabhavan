@@ -50,6 +50,7 @@ exports.sendWasteReportEmail = functions.https.onCall(async (data, context) => {
         const recipients = [
             'karthik@nk-ab.com',
             'digitalbotsolutions@gmail.com',
+            'selva@samko-holdings.com',
             // 'sreedarpariserla0@gmail.com'
         ];
 
@@ -138,6 +139,7 @@ exports.sendChecklistReportEmail = functions.https.onCall(async (data, context) 
         const recipients = [
             'karthik@nk-ab.com',
             'digitalbotsolutions@gmail.com',
+            'selva@samko-holdings.com',
             // 'sreedarpariserla0@gmail.com'
         ];
 

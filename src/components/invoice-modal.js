@@ -31,8 +31,7 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
   const [inputValue, setInputValue] = useState(""); // For editing price and quantity
   const [editField, setEditField] = useState(null); // Field being edited (price, quantity, etc.)
   const [showDropdown, setShowDropdown] = useState(false);
-  const [temperatureValues, setTemperatureValues] = useState({});
-  const [deliveryTimeValues, setDeliveryTimeValues] = useState({});
+
   const invoiceRef = useRef();
 
   useEffect(() => {
@@ -121,7 +120,7 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
   };
   console.log(invoice, "oppo1wpoqwpoqwpoqw")
   return (
-    <Dialog open={isModalOpen} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog open={isModalOpen} onClose={handleClose} maxWidth="lg" fullWidth>
       <DialogContent>
         <div
           ref={invoiceRef}
@@ -218,7 +217,8 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
                   <TableCell>Quantity</TableCell>
                   <TableCell>Units</TableCell>
                   <TableCell>Total (£)</TableCell>
-                  <TableCell>Temperature</TableCell>
+                  <TableCell>Pickup Temp</TableCell>
+                  <TableCell>Delivery Temp</TableCell>
                   <TableCell>Delivery Time</TableCell>
                 </TableRow>
               </TableHead>
@@ -348,38 +348,41 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
                     {/* Item Total Price */}
                     <TableCell sx={{ py: 0.5 }}>£{(item.price * item.quantity).toFixed(2)}</TableCell>
 
-                    {/* Temperature - empty input for manual entry */}
+                    {/* Pickup Temp */}
                     <TableCell sx={{ py: 0.5 }}>
                       <TextField
                         size="small"
                         variant="outlined"
                         placeholder=""
-                        value={temperatureValues[index] || ""}
-                        onChange={(e) =>
-                          setTemperatureValues((prev) => ({
-                            ...prev,
-                            [index]: e.target.value,
-                          }))
-                        }
-                        sx={{ width: 100 }}
+                        value={item.pickupTemp || ""}
+                        onChange={(e) => handleEditField('pickupTemp', index, e.target.value)}
+                        sx={{ width: 80 }}
                         inputProps={{ style: { padding: '4px 8px' } }}
                       />
                     </TableCell>
 
-                    {/* Delivery Time - empty input for manual entry */}
+                    {/* Delivery Temp */}
                     <TableCell sx={{ py: 0.5 }}>
                       <TextField
                         size="small"
                         variant="outlined"
                         placeholder=""
-                        value={deliveryTimeValues[index] || ""}
-                        onChange={(e) =>
-                          setDeliveryTimeValues((prev) => ({
-                            ...prev,
-                            [index]: e.target.value,
-                          }))
-                        }
-                        sx={{ width: 100 }}
+                        value={item.deliveryTemp || ""}
+                        onChange={(e) => handleEditField('deliveryTemp', index, e.target.value)}
+                        sx={{ width: 80 }}
+                        inputProps={{ style: { padding: '4px 8px' } }}
+                      />
+                    </TableCell>
+
+                    {/* Delivery Time */}
+                    <TableCell sx={{ py: 0.5 }}>
+                      <TextField
+                        size="small"
+                        variant="outlined"
+                        placeholder=""
+                        value={item.deliveryTime || ""}
+                        onChange={(e) => handleEditField('deliveryTime', index, e.target.value)}
+                        sx={{ width: 80 }}
                         inputProps={{ style: { padding: '4px 8px' } }}
                       />
                     </TableCell>
@@ -509,8 +512,9 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
                 <th style={{ padding: '10px 5px', textAlign: 'right' }}>Qty</th>
                 <th style={{ padding: '10px 5px' }}>Units</th>
                 <th style={{ padding: '10px 5px', textAlign: 'right' }}>Total</th>
-                <th style={{ padding: '10px 5px' }}>Temp</th>
-                <th style={{ padding: '10px 5px' }}>Delivery</th>
+                <th style={{ padding: '10px 5px' }}>Pickup Temp</th>
+                <th style={{ padding: '10px 5px' }}>Delivery Temp</th>
+                <th style={{ padding: '10px 5px' }}>Delivery Time</th>
               </tr>
             </thead>
             <tbody>
@@ -521,8 +525,9 @@ const InvoiceModal = ({ invoice, isModalOpen, handleClose }) => {
                   <td style={{ padding: '10px 5px', textAlign: 'right' }}>{item.quantity}</td>
                   <td style={{ padding: '10px 5px' }}>{item.units}</td>
                   <td style={{ padding: '10px 5px', textAlign: 'right' }}>£{(item.price * item.quantity).toFixed(2)}</td>
-                  <td style={{ padding: '10px 5px' }}>{temperatureValues[index] || ""}</td>
-                  <td style={{ padding: '10px 5px' }}>{deliveryTimeValues[index] || ""}</td>
+                  <td style={{ padding: '10px 5px' }}>{item.pickupTemp || ""}</td>
+                  <td style={{ padding: '10px 5px' }}>{item.deliveryTemp || ""}</td>
+                  <td style={{ padding: '10px 5px' }}>{item.deliveryTime || ""}</td>
                 </tr>
               ))}
             </tbody>

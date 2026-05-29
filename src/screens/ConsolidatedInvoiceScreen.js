@@ -78,6 +78,10 @@ const ConsolidatedInvoiceView = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [expandedPeriods, setExpandedPeriods] = useState({});
   const [activeFilter, setActiveFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("Weekly");
+  const [rawInvoices, setRawInvoices] = useState([]);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const invoiceRef = useRef(null);
   const isMobile = useMediaQuery("(max-width:600px)");
 
@@ -114,6 +118,15 @@ const ConsolidatedInvoiceView = () => {
     if (activeFilter === "paid") return group.paymentStatus === "Paid";
     return group.paymentStatus === "Pending";
   });
+
+  useEffect(() => {
+    if (rawInvoices.length > 0) {
+      const groupedInvoices = groupInvoicesByPeriod(rawInvoices, periodFilter, customStartDate, customEndDate);
+      setConsolidatedInvoices(groupedInvoices);
+    } else {
+      setConsolidatedInvoices([]);
+    }
+  }, [rawInvoices, periodFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchRestaurants();
@@ -166,8 +179,7 @@ const ConsolidatedInvoiceView = () => {
           ...doc.data(),
         }));
 
-        const groupedInvoices = groupInvoicesByPeriod(invoices);
-        setConsolidatedInvoices(groupedInvoices);
+        setRawInvoices(invoices);
         setLoading(false); // Stop loading after data is received
       },
       (error) => {
@@ -180,33 +192,58 @@ const ConsolidatedInvoiceView = () => {
     return unsubscribe;
   };
 
-  const groupInvoicesByPeriod = (invoices) => {
+  const groupInvoicesByPeriod = (invoices, filterType = "Weekly", customStart = "", customEnd = "") => {
     const grouped = {};
 
     invoices.forEach((invoice) => {
       const date = new Date(invoice.createdAt); // Ensure createdAt is a valid date
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDate();
-      const period = day <= 15 ? "first" : "second";
+      let key, label, startDate, endDate;
 
-      const key = `${year}-${month}-${period}`;
+      if (filterType === "Custom") {
+        if (customStart && date < new Date(customStart)) return;
+        if (customEnd) {
+           const end = new Date(customEnd);
+           end.setHours(23, 59, 59, 999);
+           if (date > end) return;
+        }
+        key = "custom";
+        label = "Custom Range";
+        startDate = customStart ? new Date(customStart) : new Date(0);
+        endDate = customEnd ? new Date(customEnd) : new Date();
+      } else if (filterType === "Monthly") {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        key = `monthly-${year}-${month}`;
+        label = moment(date).format("MMMM YYYY");
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 1, 0);
+      } else { // Weekly default
+        const day = date.getDay();
+        const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date);
+        monday.setDate(diffToMonday);
+        monday.setHours(0, 0, 0, 0);
+
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+
+        key = `weekly-${monday.getTime()}`;
+        label = `Weekly (Mon-Sun) - Week of ${moment(monday).format("MMM D, YYYY")}`;
+        startDate = monday;
+        endDate = sunday;
+      }
+
       if (!grouped[key]) {
         grouped[key] = {
-          period: period === "first" ? "1-15" : "16-end",
-          month: date.toLocaleString("default", { month: "long" }),
-          year,
+          period: label,
+          month: moment(startDate).format("MMMM YYYY"),
+          year: startDate.getFullYear(),
           invoices: [],
           totalAmount: 0,
           totalItems: 0,
-          startDate:
-            period === "first"
-              ? new Date(year, month, 1)
-              : new Date(year, month, 16),
-          endDate:
-            period === "first"
-              ? new Date(year, month, 15)
-              : new Date(year, month + 1, 0),
+          startDate,
+          endDate,
           isPaid: true, // Initialize as true for payment status
         };
       }
@@ -593,6 +630,37 @@ const ConsolidatedInvoiceView = () => {
 
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Filter size={18} color={appTheme.colors.primary} />
+                  {periodFilter === "Custom" && (
+                    <>
+                      <TextField
+                        type="date"
+                        size="small"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        type="date"
+                        size="small"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </>
+                  )}
+                  <Select
+                    value={periodFilter}
+                    onChange={(e) => setPeriodFilter(e.target.value)}
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      "& .MuiOutlinedInput-notchedOutline": { borderColor: appTheme.colors.primary },
+                    }}
+                  >
+                    <MenuItem value="Weekly">Weekly (Monday-Sunday)</MenuItem>
+                    <MenuItem value="Monthly">Monthly</MenuItem>
+                    <MenuItem value="Custom">Custom</MenuItem>
+                  </Select>
                   <Select
                     value={activeFilter}
                     onChange={(e) => setActiveFilter(e.target.value)}
@@ -604,7 +672,7 @@ const ConsolidatedInvoiceView = () => {
                       },
                     }}
                   >
-                    <MenuItem value="all">All</MenuItem>
+                    <MenuItem value="all">All Status</MenuItem>
                     <MenuItem value="paid">Paid</MenuItem>
                     <MenuItem value="pending">Pending</MenuItem>
                   </Select>
@@ -681,12 +749,7 @@ const ConsolidatedInvoiceView = () => {
                           >
                             <TableCell>
                               <Typography fontWeight={600}>
-                                {group.month} {group.year}
-                              </Typography>
-                              <Typography variant="caption">
-                                {group.period === "1-15"
-                                  ? "1st-15th"
-                                  : "16th-End"}
+                                {group.period}
                               </Typography>
                             </TableCell>
                             <TableCell>
