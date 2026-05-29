@@ -19,59 +19,47 @@ import {
   alpha,
   useMediaQuery,
   InputAdornment,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Chip,
-  Grid
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton
 } from "@mui/material";
 import {
   Search,
   ArrowLeft,
   Filter,
 } from "lucide-react";
-import { Person as PersonIcon, Event as EventIcon } from "@mui/icons-material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Person as PersonIcon, Event as EventIcon, Visibility as VisibilityIcon, Close as CloseIcon } from "@mui/icons-material";
 import Header from "../components/header";
 import appTheme from "../theme";
 import moment from "moment";
 
 const ConsolidatedReportsScreen = () => {
-  const [restaurants, setRestaurants] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [rawReports, setRawReports] = useState([]);
   const [groupedReports, setGroupedReports] = useState([]);
-  const [periodFilter, setPeriodFilter] = useState("Weekly");
+  const [periodFilter, setPeriodFilter] = useState("Today");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
+  const [selectedReport, setSelectedReport] = useState(null);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
-    const fetchRestaurants = async () => {
-      const usersRef = collection(db, "users");
-      const snapshot = await getDocs(usersRef);
+    const fetchReports = async () => {
+      const reportsRef = collection(db, "checklist_reports");
+      const snapshot = await getDocs(reportsRef);
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRestaurants(data);
+      setRawReports(data);
     };
-    fetchRestaurants();
+    fetchReports();
   }, []);
 
-  const fetchReports = async (restaurant) => {
-    const reportsRef = collection(db, "checklist_reports");
-    const snapshot = await getDocs(reportsRef);
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    // Filter for selected restaurant
-    const filtered = data.filter(r => r.userId === restaurant.id || r.submittedByEmail === restaurant.email);
-    setRawReports(filtered);
-  };
-
   useEffect(() => {
-    if (!selectedRestaurant) return;
     const grouped = groupReports(rawReports, periodFilter, customStartDate, customEndDate, filterCategory);
     setGroupedReports(grouped);
-  }, [rawReports, periodFilter, customStartDate, customEndDate, selectedRestaurant, filterCategory]);
+  }, [rawReports, periodFilter, customStartDate, customEndDate, filterCategory]);
 
   const groupReports = (reports, filterType, customStart, customEnd, category) => {
     const grouped = {};
@@ -147,18 +135,11 @@ const ConsolidatedReportsScreen = () => {
     return Object.values(grouped);
   };
 
-  const handleRestaurantSelect = (restaurant) => {
-    setSelectedRestaurant(restaurant);
-    fetchReports(restaurant);
-  };
-
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unknown Date";
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return moment(date).format("MMM D, YYYY h:mm A");
   };
-
-  const filteredRestaurants = restaurants.filter(r => r.restaurantName?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <Box sx={{ backgroundColor: alpha(appTheme.colors.pastelCream, 0.3), minHeight: "100vh", pb: 3, pt: 2 }}>
@@ -166,48 +147,9 @@ const ConsolidatedReportsScreen = () => {
         <Header title="Consolidated Reports" />
         
         <Paper elevation={2} sx={{ backgroundColor: "#fff", borderRadius: 2, p: 2, mb: 3 }}>
-          {!selectedRestaurant ? (
-            <>
-              <TextField
-                fullWidth
-                placeholder="Search restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment>,
-                  sx: { mb: 2 }
-                }}
-              />
-              <TableContainer sx={{ border: "1px solid #eee", borderRadius: 2 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: appTheme.colors.pastelGreen }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Restaurant</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600 }}>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredRestaurants.map((restaurant) => (
-                      <TableRow key={restaurant.id} hover>
-                        <TableCell>{restaurant.restaurantName}</TableCell>
-                        <TableCell>{restaurant.address}</TableCell>
-                        <TableCell align="center">
-                          <Button variant="outlined" size="small" onClick={() => handleRestaurantSelect(restaurant)}>View Reports</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          ) : (
-            <>
+          <>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-                <Box>
-                  <Button startIcon={<ArrowLeft />} onClick={() => setSelectedRestaurant(null)} sx={{ mr: 2 }}>Back</Button>
-                  <Typography variant="h6" component="span" fontWeight={600}>{selectedRestaurant.restaurantName}</Typography>
-                </Box>
+                <Typography variant="h6" component="span" fontWeight={600}>All Reports</Typography>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Filter size={18} color={appTheme.colors.primary} />
                   {periodFilter === "Custom" && (
@@ -231,40 +173,61 @@ const ConsolidatedReportsScreen = () => {
                 </Stack>
               </Box>
 
-              {groupedReports.length === 0 ? (
+              {groupedReports.length === 0 || groupedReports.every(g => g.reports.length === 0) ? (
                 <Typography align="center" color="textSecondary" sx={{ py: 5 }}>No reports found for this period.</Typography>
               ) : (
-                groupedReports.map((group, gIndex) => (
-                  <Box key={gIndex} sx={{ mb: 4 }}>
-                    <Typography variant="h6" sx={{ backgroundColor: appTheme.colors.pastelGreen, p: 1.5, borderRadius: 1, mb: 2, fontWeight: 'bold' }}>
-                      {group.label} ({group.reports.length} forms submitted)
-                    </Typography>
-                    
-                    {group.reports.map((report, idx) => (
-                      <Accordion key={report.id} sx={{ mb: 1, border: "1px solid #eee", boxShadow: "none" }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: "#fafafa" }}>
-                          <Grid container spacing={2} alignItems="center">
-                            <Grid item xs={12} sm={4}>
-                              <Typography fontWeight={600} color={appTheme.colors.primary}>{report.checklistTitle || 'Unknown Form'}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <PersonIcon sx={{ color: "text.secondary", fontSize: 18 }} />
-                                <Typography variant="body2">{report.submittedByName || report.submittedByEmail || "Unknown User"}</Typography>
-                              </Box>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <EventIcon sx={{ color: "text.secondary", fontSize: 18 }} />
-                                <Typography variant="body2">{formatDate(report.submittedAt)}</Typography>
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ backgroundColor: "#fff", p: 3 }}>
-                          <Typography variant="subtitle2" fontWeight={600} mb={2} color="textSecondary">RESPONSES</Typography>
-                          {report.answers && report.answers.length > 0 ? (
-                            report.answers.map((ans, i) => (
+                <>
+                  <Typography variant="h6" sx={{ mt: 2, mb: 2, color: appTheme.colors.dark }}>Submitted Reports Summary</Typography>
+                  <TableContainer component={Paper} sx={{ mb: 4, borderRadius: 2, border: "1px solid #e0e0e0", boxShadow: "none" }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: "#2e7d32" }}>
+                          <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>Date</TableCell>
+                          <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>Checklist Title</TableCell>
+                          <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>Submitted By</TableCell>
+                          <TableCell sx={{ color: "#fff", fontWeight: "bold", width: 60 }} align="center">Action</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {groupedReports.flatMap(g => g.reports).map((report, idx) => (
+                          <TableRow key={report.id} sx={{ backgroundColor: idx % 2 === 0 ? "#f5f5f5" : "#ffffff" }}>
+                            <TableCell>{formatDate(report.submittedAt)}</TableCell>
+                            <TableCell>{report.checklistTitle || 'Unknown Form'}</TableCell>
+                            <TableCell>{report.submittedByName || report.submittedByEmail || "Unknown User"}</TableCell>
+                            <TableCell align="center">
+                              <IconButton size="small" onClick={() => setSelectedReport(report)} sx={{ color: appTheme.colors.primary }}>
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Dialog open={!!selectedReport} onClose={() => setSelectedReport(null)} maxWidth="md" fullWidth>
+                    {selectedReport && (
+                      <>
+                        <DialogTitle sx={{ backgroundColor: appTheme.colors.pastelCream, m: 0, p: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography variant="h6" fontWeight="bold">
+                            {selectedReport.checklistTitle || 'Unknown Form'}
+                          </Typography>
+                          <IconButton onClick={() => setSelectedReport(null)}>
+                            <CloseIcon />
+                          </IconButton>
+                        </DialogTitle>
+                        <DialogContent dividers sx={{ p: 3, backgroundColor: "#f9f9f9" }}>
+                          <Box sx={{ mb: 3, pb: 2, borderBottom: "1px solid #e0e0e0" }}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              <strong>Date:</strong> {formatDate(selectedReport.submittedAt)}
+                            </Typography>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              <strong>Submitted By:</strong> {selectedReport.submittedByName || selectedReport.submittedByEmail || "Unknown User"}
+                            </Typography>
+                          </Box>
+                          
+                          {selectedReport.answers && selectedReport.answers.length > 0 ? (
+                            selectedReport.answers.map((ans, i) => (
                               <Box key={i} mb={2}>
                                 <Typography variant="body2" fontWeight={600} mb={0.5} display="flex" alignItems="flex-start" gap={1}>
                                   <Chip label={`Q${i+1}`} size="small" sx={{ backgroundColor: appTheme.colors.pastelPeach, color: appTheme.colors.primary, fontWeight: "bold", height: 20, fontSize: "0.7rem", mt: 0.3 }} />
@@ -286,14 +249,13 @@ const ConsolidatedReportsScreen = () => {
                           ) : (
                             <Typography variant="body2" color="text.disabled">No responses recorded.</Typography>
                           )}
-                        </AccordionDetails>
-                      </Accordion>
-                    ))}
-                  </Box>
-                ))
+                        </DialogContent>
+                      </>
+                    )}
+                  </Dialog>
+                </>
               )}
             </>
-          )}
         </Paper>
       </Box>
     </Box>
